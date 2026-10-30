@@ -34,6 +34,9 @@ struct riscv_program;
 #define PG_MAX_LEVEL 5
 
 #define RISCV_BATCH_ALLOC_SIZE 128
+/* Batch size for system bus block transfers; larger batches mean fewer JTAG
+ * queue flushes per transfer. */
+#define RISCV_SBA_BATCH_ALLOC_SIZE 4096
 
 extern struct target_type riscv011_target;
 extern struct target_type riscv013_target;
