@@ -3736,7 +3736,7 @@ COMMAND_HANDLER(handle_dump_image_command)
 	COMMAND_PARSE_ADDRESS(CMD_ARGV[1], address);
 	COMMAND_PARSE_ADDRESS(CMD_ARGV[2], size);
 
-	uint32_t buf_size = (size > 4096) ? 4096 : size;
+	uint32_t buf_size = (size > 65536) ? 65536 : size;
 	buffer = malloc(buf_size);
 	if (!buffer)
 		return ERROR_FAIL;
@@ -3752,6 +3752,10 @@ COMMAND_HANDLER(handle_dump_image_command)
 	while (size > 0) {
 		size_t size_written;
 		uint32_t this_run_size = (size > buf_size) ? buf_size : size;
+		/* End chunks on a 16-byte boundary, so that every following chunk
+		 * starts aligned and can be read with the widest access size. */
+		if (size > buf_size)
+			this_run_size -= (address + this_run_size) % 16;
 		retval = target_read_buffer(target, address, this_run_size, buffer);
 		if (retval != ERROR_OK)
 			break;

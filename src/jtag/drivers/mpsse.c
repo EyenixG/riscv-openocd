@@ -339,9 +339,9 @@ struct mpsse_ctx *mpsse_open(const uint16_t vids[], const uint16_t pids[], const
 		return NULL;
 
 	bit_copy_queue_init(&ctx->read_queue);
-	ctx->read_chunk_size = 16384;
-	ctx->read_size = 16384;
-	ctx->write_size = 16384;
+	ctx->read_chunk_size = 65536;
+	ctx->read_size = 65536;
+	ctx->write_size = 65536;
 	ctx->read_chunk = malloc(ctx->read_chunk_size);
 	ctx->read_buffer = malloc(ctx->read_size);
 

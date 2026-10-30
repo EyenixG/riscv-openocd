@@ -22,7 +22,7 @@ struct reg;
 #include <target/target.h>
 #include <server/server.h>
 
-#define GDB_BUFFER_SIZE 16384
+#define GDB_BUFFER_SIZE 0x100000
 
 int gdb_target_add_all(struct target *target);
 int gdb_register_commands(struct command_context *command_context);
