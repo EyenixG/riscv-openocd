@@ -377,6 +377,10 @@ struct riscv_info {
 	bool wp_allow_ge_lt_trigger;
 
 	bool autofence;
+
+	/* When false, coming out of reset is detected by allhalted/allrunning
+	 * instead of allhavereset, for Debug Modules without havereset. */
+	bool wait_havereset;
 };
 
 static inline riscv_reg_t riscv_priv_mode_to_prv(enum riscv_priv_mode mode)

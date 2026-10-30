@@ -12384,6 +12384,14 @@ using the @var{riscv exec_progbuf} command to execute fences or CMO instructions
 (RISC-V Cache Management Operations).
 @end deffn
 
+@deffn {Command} {riscv wait_havereset} [on|off]
+When on (default), after deasserting reset OpenOCD waits until
+@var{dmstatus.allhavereset} is set. Some Debug Modules never set
+@var{havereset}; for them use @var{off}, and OpenOCD instead waits until
+@var{dmstatus.allhalted} (for @command{reset halt} and @command{reset init})
+or @var{dmstatus.allrunning} (for @command{reset run}) is set.
+@end deffn
+
 @section ARC Architecture
 @cindex ARC
 

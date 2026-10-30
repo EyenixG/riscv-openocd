@@ -3019,6 +3019,7 @@ static bool dcsr_config_equals_reset_value(const struct target *target)
 
 static int deassert_reset(struct target *target)
 {
+	RISCV_INFO(r);
 	RISCV013_INFO(info);
 	dm013_info_t *dm = get_dm(target);
 	if (!dm)
@@ -3045,6 +3046,9 @@ static int deassert_reset(struct target *target)
 		return result;
 
 	uint32_t dmstatus;
+	uint32_t done_mask = DM_DMSTATUS_ALLHAVERESET;
+	if (!r->wait_havereset)
+		done_mask = target->reset_halt ? DM_DMSTATUS_ALLHALTED : DM_DMSTATUS_ALLRUNNING;
 	const unsigned int orig_base_delay = riscv_scan_get_delay(&info->learned_delays,
 			RISCV_DELAY_BASE);
 	int64_t then = timeval_ms() + 1000 * riscv_get_command_timeout_sec();
@@ -3057,13 +3061,15 @@ static int deassert_reset(struct target *target)
 		if (timeval_ms() > then) {
 			LOG_TARGET_ERROR(target, "Hart didn't leave reset in %ds; "
 					"dmstatus=0x%x (allunavail=%s, allhavereset=%s); "
-					"Increase the timeout with riscv set_command_timeout_sec.",
+					"Increase the timeout with riscv set_command_timeout_sec, "
+					"or use 'riscv wait_havereset off' if the Debug Module "
+					"does not implement havereset.",
 					riscv_get_command_timeout_sec(), dmstatus,
 					get_field(dmstatus, DM_DMSTATUS_ALLUNAVAIL) ? "true" : "false",
 					get_field(dmstatus, DM_DMSTATUS_ALLHAVERESET) ? "true" : "false");
 			return ERROR_TIMEOUT_REACHED;
 		}
-	} while (!get_field(dmstatus, DM_DMSTATUS_ALLHAVERESET));
+	} while (!(dmstatus & done_mask));
 
 	riscv_scan_set_delay(&info->learned_delays, RISCV_DELAY_BASE,
 			orig_base_delay);
