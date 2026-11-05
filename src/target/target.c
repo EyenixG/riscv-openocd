@@ -121,6 +121,9 @@ static int64_t target_timer_next_event_value;
 static OOCD_LIST_HEAD(target_reset_callback_list);
 static OOCD_LIST_HEAD(target_trace_callback_list);
 static unsigned int polling_interval = TARGET_DEFAULT_POLLING_INTERVAL;
+/* Upper limit of the poll backoff after failed polls (poll_backoff_max). A short limit finds a
+ * target that comes back (board power cycled) sooner, at the cost of more failed polls meanwhile. */
+static unsigned int polling_max_interval = TARGET_MAX_POLLING_INTERVAL_MS;
 static OOCD_LIST_HEAD(empty_smp_targets);
 
 enum nvp_assert {
@@ -3002,7 +3005,7 @@ static int handle_target(void *priv)
 		if (tgt_res != ERROR_OK) {
 			retval = tgt_res;
 			target->backoff.interval = MAX(polling_interval,
-					MIN(target->backoff.interval * 2u + 1u, TARGET_MAX_POLLING_INTERVAL_MS));
+					MIN(target->backoff.interval * 2u + 1u, polling_max_interval));
 		} else {
 			target->backoff.interval = polling_interval;
 		}
@@ -3207,6 +3210,34 @@ COMMAND_HANDLER(handle_poll_interval_command)
 				return retval;
 		}
 		polling_interval = ms;
+		break;
+	default:
+		return ERROR_COMMAND_SYNTAX_ERROR;
+	}
+
+	return ERROR_OK;
+}
+
+COMMAND_HANDLER(handle_poll_backoff_max_command)
+{
+	unsigned int ms;
+
+	switch (CMD_ARGC) {
+	case 0:
+		command_print(CMD, "%u", polling_max_interval);
+		break;
+	case 1:
+		if (parse_uint(CMD_ARGV[0], &ms) != ERROR_OK)
+			return ERROR_COMMAND_ARGUMENT_INVALID;
+		polling_max_interval = ms;
+
+		/* a target already waiting longer gets the new limit now, not after its next poll */
+		for (struct target *target = all_targets; target; target = target->next) {
+			if (target->backoff.interval > ms) {
+				target->backoff.interval = ms;
+				target->backoff.next_attempt = MIN(target->backoff.next_attempt, timeval_ms() + ms);
+			}
+		}
 		break;
 	default:
 		return ERROR_COMMAND_SYNTAX_ERROR;
@@ -6426,6 +6457,14 @@ static const struct command_registration target_command_handlers[] = {
 		.handler = handle_poll_interval_command,
 		.mode = COMMAND_ANY,
 		.help = "print or set the target state polling interval",
+		.usage = "[milliseconds]",
+	},
+	{
+		.name = "poll_backoff_max",
+		.handler = handle_poll_backoff_max_command,
+		.mode = COMMAND_ANY,
+		.help = "print or set the longest wait between polls of a target whose polls fail "
+			"(default 5000 ms); the wait doubles from poll_interval up to this limit",
 		.usage = "[milliseconds]",
 	},
 	COMMAND_REGISTRATION_DONE
